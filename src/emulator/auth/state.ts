@@ -57,6 +57,14 @@ export abstract class ProjectState {
 
   abstract get enableEmailLinkSignin(): boolean;
 
+  abstract get includeAccessToken(): boolean;
+
+  abstract get includeIdToken(): boolean;
+
+  abstract get includeRefreshToken(): boolean;
+
+  abstract getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined;
+
   createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
     for (let i = 0; i < 10; i++) {
       // Try this for 10 times to prevent ID collision (since our RNG is
@@ -343,6 +351,16 @@ export abstract class ProjectState {
       return undefined;
     }
     return this.getUserByLocalIdAssertingExists(localId);
+  }
+
+  getAllPhoneNumbersByLocalId(localId: string): string[] {
+    const allPhoneNumbers = [];
+    for (const [phoneNumber, localIdForPhoneNumber] of Object.entries(this.localIdForPhoneNumber)) {
+      if (localIdForPhoneNumber === localId) {
+        allPhoneNumbers.push(phoneNumber);
+      }
+    }
+    return allPhoneNumbers;
   }
 
   private removeProviderEmailForUser(email: string, localId: string): void {
@@ -648,6 +666,23 @@ export class AgentProjectState extends ProjectState {
     this._config.blockingFunctions = blockingFunctions;
   }
 
+  get includeAccessToken() {
+    return this._config.blockingFunctions.forwardInboundCredentials?.accessToken ?? false;
+  }
+
+  get includeIdToken() {
+    return this._config.blockingFunctions.forwardInboundCredentials?.idToken ?? false;
+  }
+
+  get includeRefreshToken() {
+    return this._config.blockingFunctions.forwardInboundCredentials?.refreshToken ?? false;
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    const triggers = this.blockingFunctionsConfig.triggers;
+    return triggers?.hasOwnProperty(event) ? triggers![event].functionUri : undefined;
+  }
+
   // TODO(lisajian): Once v2 API discovery is updated, type of update should be
   // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] and validation
   // of update.usageMode should be moved to operations.ts
@@ -792,6 +827,22 @@ export class TenantProjectState extends ProjectState {
 
   get enableEmailLinkSignin() {
     return this._tenantConfig.enableEmailLinkSignin;
+  }
+
+  get includeAccessToken() {
+    return this.parentProject.includeAccessToken;
+  }
+
+  get includeIdToken() {
+    return this.parentProject.includeIdToken;
+  }
+
+  get includeRefreshToken() {
+    return this.parentProject.includeRefreshToken;
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    return this.parentProject.getBlockingFunctionUri(event);
   }
 
   delete(): void {
