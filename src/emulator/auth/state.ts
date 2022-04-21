@@ -680,7 +680,12 @@ export class AgentProjectState extends ProjectState {
 
   getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
     const triggers = this.blockingFunctionsConfig.triggers;
-    return triggers?.hasOwnProperty(event) ? triggers![event].functionUri : undefined;
+    if (triggers) {
+      return Object.prototype.hasOwnProperty.call(triggers, event)
+        ? triggers![event].functionUri
+        : undefined;
+    }
+    return undefined;
   }
 
   // TODO(lisajian): Once v2 API discovery is updated, type of update should be
